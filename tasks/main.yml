@@ -1,2 +1,112 @@
 ---
 # tasks file for Nainterceptor.ghost-blog
+---
+#centOS
+- name: "Copy fixed nginx service"
+  template: src=../files/nginx.service.j2 dest=/etc/systemd/system/multi-user.target.wants/nginx.service
+
+- name: "Install the 'Development tools' package group"
+  yum: name="@Development tools" state=latest
+
+- name: "Install packages"
+  yum: name={{ item }} state=present
+  with_items:
+        - nodejs
+        - npm
+
+- name: "Prepare - check if Ghost installation path exists"
+  stat:
+    path: "{{ ghost_install_dir | dirname }}"
+  register: ghost_check_install_dir
+
+- name: "Prepare - create Ghost installation path if necessary"
+  file:
+    dest: "{{ ghost_install_dir | dirname }}"
+    mode: 0755
+    state: directory
+  when: not ghost_check_install_dir.stat.exists
+
+- name: "Prepare - add Ghost group"
+  group:
+    name: "{{ ghost_user_group }}"
+    system: yes
+    state: present
+
+- name: "Prepare - add Ghost user"
+  user:
+    name: "{{ ghost_user_name }}"
+    group: "{{ ghost_user_group }}"
+    home: "{{ ghost_install_dir }}"
+    createhome: yes
+    shell: /bin/false
+    system: yes
+    state: present
+
+- name: "Download Ghost"
+  get_url: >
+    url=https://ghost.org/zip/ghost-{{ version }}.zip
+    dest=/tmp
+
+- name: "Unzip ghost"
+  unarchive:
+    src: /tmp/ghost-{{ version }}.zip
+    dest: "{{ ghost_install_dir }}"
+    copy: no
+    creates: "{{ ghost_install_dir }}/index.js"
+
+- stat: path=/etc/shorewall/rules
+  register: shared_key
+
+- name: "Install - install Ghost"
+  npm:
+    path: "{{ ghost_install_dir }}"
+    production: yes
+    state: present
+  sudo_user: "{{ ghost_user_name }}"
+  sudo: yes
+
+- name: "Install - add configurations"
+  template:
+    src: ../files/config.js.j2
+    dest: "{{ ghost_install_dir }}/config.js"
+    owner: "{{ ghost_user_name }}"
+    group: "{{ ghost_user_group }}"
+    mode: 0644
+  sudo: yes
+
+- name: "Install - add init script"
+  template:
+    src: ../files/ghost.service.j2
+    dest: /etc/systemd/system/ghost.service
+    owner: root
+    group: root
+    mode: 0755
+  notify:
+    - Enable Ghost
+    - Restart Ghost
+
+- name: "Download ghost theme"
+  get_url: >
+    url=https://github.com/dlecina/StayPuft/archive/master.zip
+    dest=/tmp/staypuft-master.zip
+
+- name: "Unzip ghost theme"
+  unarchive:
+    src: /tmp/staypuft-master.zip
+    dest: "{{ ghost_install_dir }}/content/themes"
+    copy: no
+    creates: "{{ ghost_install_dir }}/content/themes/StayPuft-master/index.hbs"
+  sudo_user: "{{ ghost_user_name }}"
+  sudo: yes
+
+- name: "Install - add partial"
+  template:
+    src: ../files/partials/{{item}}.hbs.j2
+    dest: "{{ ghost_install_dir }}/content/themes/StayPuft-master/partials/{{item}}.hbs"
+    owner: "{{ ghost_user_name }}"
+    group: "{{ ghost_user_group }}"
+    mode: 0644
+  with_items:
+    - copyright
+    - disqus
+    - sidebar-external

@@ -1,2 +1,14 @@
 ---
 # handlers file for Nainterceptor.ghost-blog
+- name: "Enable Ghost"
+  service:
+    name: ghost
+    state: started
+    enabled: yes
+  when: ansible_distribution == 'CentOS'
+
+- name: "Restart Ghost"
+  service:
+    name: ghost
+    state: restarted
+  when: ansible_distribution == 'CentOS'
