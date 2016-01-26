@@ -1,14 +1,14 @@
 ---
 # defaults file for Nainterceptor.ghost-blog
 version: 0.7.1
-    ghost_user_name: ghost
-    ghost_user_group: ghost
-    ghost_install_dir: /var/www/ghost
-    nginx_sites:
-       default:
-           - listen 80
-           - listen [::]:80
-           - proxy_set_header X-Real-IP $remote_addr
-           - proxy_set_header Host $http_host
-           - location / { proxy_pass http://localhost:2368; }
-           - location ~ ^/ghost/setup { allow 127.0.0.1; deny all; }
+ghost_user_name: ghost
+ghost_user_group: ghost
+ghost_install_dir: /var/www/ghost
+nginx_sites:
+   default:
+       - listen 80
+       - listen [::]:80
+       - proxy_set_header X-Real-IP $remote_addr
+       - proxy_set_header Host $http_host
+       - location / { proxy_pass http://localhost:2368; }
+       - location ~ ^/ghost/setup { allow 127.0.0.1; deny all; }
